@@ -106,14 +106,18 @@ public class MessageViewHolder extends ItemViewHolder<MessageActivity.MessageIte
                 public void onSuccess(Paginator<Member> memberPaginator) {
                     for (Member member : memberPaginator.getItems()) {
                         if (msg.getAuthor().equals(member.getUserInfo().getIdentity())) {
-                            fillUserAvatar(imageView, member);
+
+                            //fillUserAvatar(imageView, member);
+                            //TODO Optimize this method later
+
                             fillUserReachability(reachabilityView, member);
                         }
 
                         if (member.getLastConsumedMessageIndex() != null
                             && member.getLastConsumedMessageIndex()
                                    == message.getMessage().getMessageIndex()) {
-                            drawConsumptionHorizon(member);
+                            //drawConsumptionHorizon(member);
+                            //TODO Find another way to draw the horizon
                         }
                     }
                 }

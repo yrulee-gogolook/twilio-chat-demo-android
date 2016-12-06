@@ -33,8 +33,6 @@ android {
             buildConfigField "String", "ACCESS_TOKEN_SERVICE_URL", ACCESS_TOKEN_SERVICE_URL
         }
         debug {
-            applicationIdSuffix ".debug"
-            versionNameSuffix "-debug"
             buildConfigField "String", "ACCESS_TOKEN_SERVICE_URL", ACCESS_TOKEN_SERVICE_URL
         }
     }

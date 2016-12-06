@@ -93,13 +93,17 @@ public class LoginActivity extends Activity implements LoginListener
             public void onClick(View v)
             {
                 String idChosen = clientNameTextBox.getText().toString();
+
+                /*
                 String endpointIdFull =
                     idChosen + "-" + endpoint_id + "-android-" + getApplication().getPackageName();
+                */
 
                 String url = Uri.parse(BuildConfig.ACCESS_TOKEN_SERVICE_URL)
                                  .buildUpon()
                                  .appendQueryParameter("identity", idChosen)
-                                 .appendQueryParameter("endpointId", endpointIdFull)
+                                 //.appendQueryParameter("endpointId", endpointIdFull)
+                                 .appendQueryParameter("device", endpoint_id)
                                  .build()
                                  .toString();
                 logger.d("url string : " + url);
@@ -166,6 +170,7 @@ public class LoginActivity extends Activity implements LoginListener
         progressDialog.dismiss();
         Intent intent = new Intent(this, ChannelActivity.class);
         startActivity(intent);
+        finish();
     }
 
     @Override

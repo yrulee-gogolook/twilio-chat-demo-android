@@ -17,7 +17,8 @@
             android:layout_alignParentStart="true"
             android:background="#d3d3d3"
             android:layout_marginStart="3dp"
-            android:contentDescription="@string/userAvatar"/>
+            android:contentDescription="@string/userAvatar"
+            android:visibility="gone"/>
 
         <LinearLayout
             android:id="@+id/authorLine"

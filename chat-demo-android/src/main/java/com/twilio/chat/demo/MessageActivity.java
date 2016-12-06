@@ -744,7 +744,7 @@ public class MessageActivity extends Activity implements ChannelListener
                 public void onSuccess()
                 {
                     super.onSuccess();
-                    adapter.notifyDataSetChanged();
+                    //adapter.notifyDataSetChanged();
                     inputText.setText("");
                 }
             });
@@ -756,7 +756,19 @@ public class MessageActivity extends Activity implements ChannelListener
     @Override
     public void onMessageAdd(Message message)
     {
-        setupListView(this.channel);
+        logger.d("Received onMessageAdd for message sid|" + message.getSid() + "|");
+        //setupListView(this.channel);
+
+        messages.add(message);
+        Collections.sort(messages, new CustomMessageComparator());
+
+        MessageItem[] items = new MessageItem[messages.size()];
+        for (int i = 0; i < items.length; i++) {
+            items[i] = new MessageItem(messages.get(i), channel.getMembers(), identity);
+        }
+        messageItemList = new ArrayList<>(Arrays.asList(items));
+
+        adapter.setItems(messageItemList);
     }
 
     @Override

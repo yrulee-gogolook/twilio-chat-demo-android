@@ -32,6 +32,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -49,6 +50,8 @@ import org.json.JSONException;
 public class ChannelActivity extends Activity implements ChatClientListener
 {
     private static final Logger logger = Logger.getLogger(ChannelActivity.class);
+
+    final static String DEFAULT_CHANNEL_NAME = "general";
 
     private static final String[] CHANNEL_OPTIONS = { "Join" };
 
@@ -306,16 +309,53 @@ public class ChannelActivity extends Activity implements ChatClientListener
 
         channelsObject = basicClient.getChatClient().getChannels();
 
-        channelsObject.getUserChannels(new CallbackListener<Paginator<Channel>>() {
+        //Fetch only one channel for testing
+        channelsObject.getChannel(DEFAULT_CHANNEL_NAME, new CallbackListener<Channel>() {
             @Override
-            public void onSuccess(Paginator<Channel> channelsPaginator)
-            {
-                channels.clear();
-                channels.addAll(channelsPaginator.getItems());
-                Collections.sort(channels, new CustomChannelComparator());
-                adapter.notifyDataSetChanged();
+            public void onSuccess(final Channel channel) {
+                if (channel != null) {
+                    ChannelActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            displayChannel(channel);
+                        }
+                    });
+                } else {
+                    channelsObject.createChannel(DEFAULT_CHANNEL_NAME,
+                            Channel.ChannelType.PUBLIC, new CallbackListener<Channel>() {
+                                @Override
+                                public void onSuccess(final Channel channel) {
+                                    if (channel != null) {
+                                        ChannelActivity.this.runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                displayChannel(channel);
+                                            }
+                                        });
+                                    }
+                                }
+
+                                @Override
+                                public void onError(ErrorInfo errorInfo) {
+                                    logger.e("Error creating channel: " + errorInfo.getErrorText());
+                                }
+                            });
+                }
             }
+
+            @Override
+            public void onError(ErrorInfo errorInfo) {
+                logger.e("Error retrieving channel: " + errorInfo.getErrorText());
+            }
+
         });
+    }
+
+    private void displayChannel(Channel channel) {
+        channels.clear();
+        channels.add(channel);
+        Collections.sort(channels, new CustomChannelComparator());
+        adapter.notifyDataSetChanged();
     }
 
     private void showIncomingInvite(final Channel channel)
