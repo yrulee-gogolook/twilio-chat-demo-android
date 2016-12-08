@@ -51,6 +51,7 @@ public class ChannelActivity extends Activity implements ChatClientListener
 {
     private static final Logger logger = Logger.getLogger(ChannelActivity.class);
 
+    final static String DEFAULT_CHANNEL_FRIENDLY_NAME = "General Chat Channel";
     final static String DEFAULT_CHANNEL_NAME = "general";
 
     private static final String[] CHANNEL_OPTIONS = { "Join" };
@@ -321,8 +322,11 @@ public class ChannelActivity extends Activity implements ChatClientListener
                         }
                     });
                 } else {
-                    channelsObject.createChannel(DEFAULT_CHANNEL_NAME,
-                            Channel.ChannelType.PUBLIC, new CallbackListener<Channel>() {
+                    channelsObject.channelBuilder()
+                            .withFriendlyName(DEFAULT_CHANNEL_FRIENDLY_NAME)
+                            .withUniqueName(DEFAULT_CHANNEL_NAME)
+                            .withType(ChannelType.PUBLIC)
+                            .build(new CallbackListener<Channel>() {
                                 @Override
                                 public void onSuccess(final Channel channel) {
                                     if (channel != null) {
@@ -431,8 +435,19 @@ public class ChannelActivity extends Activity implements ChatClientListener
     public void onChannelAdd(final Channel channel)
     {
         logger.d("Received onChannelAdd callback for channel |" + channel.getFriendlyName() + "|");
-        channels.add(channel);
-        adapter.notifyDataSetChanged();
+
+        boolean isExist = false;
+        for (Channel c : channels) {
+            if (c.getSid().equals(channel.getSid())) {
+                isExist = true;
+                break;
+            }
+        }
+
+        if (!isExist) {
+            channels.add(channel);
+            adapter.notifyDataSetChanged();
+        }
     }
 
     @Override
