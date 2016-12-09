@@ -1,29 +1,5 @@
 package com.twilio.chat.demo;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-
-import com.twilio.chat.Channel;
-import com.twilio.chat.Channel.ChannelType;
-import com.twilio.chat.ChannelListener;
-import com.twilio.chat.Channels;
-import com.twilio.chat.CallbackListener;
-import com.twilio.chat.StatusListener;
-import com.twilio.chat.ChatClientListener;
-import com.twilio.chat.Member;
-import com.twilio.chat.Message;
-import com.twilio.chat.ChatClient;
-import com.twilio.chat.ErrorInfo;
-import com.twilio.chat.UserInfo;
-import com.twilio.chat.Paginator;
-
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -32,22 +8,33 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
-import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
-import uk.co.ribot.easyadapter.EasyAdapter;
-import org.json.JSONObject;
+
+import com.twilio.chat.CallbackListener;
+import com.twilio.chat.Channel;
+import com.twilio.chat.Channel.ChannelType;
+import com.twilio.chat.Channels;
+import com.twilio.chat.ChatClient;
+import com.twilio.chat.ChatClientListener;
+import com.twilio.chat.ErrorInfo;
+import com.twilio.chat.UserInfo;
+
 import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
+
+import uk.co.ribot.easyadapter.EasyAdapter;
 
 @SuppressLint("InflateParams")
-public class ChannelActivity extends Activity implements ChatClientListener
+public class ChannelActivity extends Activity
 {
     private static final Logger logger = Logger.getLogger(ChannelActivity.class);
 
@@ -74,7 +61,101 @@ public class ChannelActivity extends Activity implements ChatClientListener
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_channel);
         basicClient = TwilioApplication.get().getBasicClient();
-        basicClient.getChatClient().setListener(ChannelActivity.this);
+        basicClient.getChatClient().setListener(new ChatClientListener() {
+            @Override
+            public void onChannelAdd(final Channel channel)
+            {
+                logger.d("Received onChannelAdd callback for channel |" + channel.getFriendlyName() + "|");
+
+                boolean isExist = false;
+                for (Channel c : channels) {
+                    if (c.getSid().equals(channel.getSid())) {
+                        isExist = true;
+                        break;
+                    }
+                }
+
+                if (!isExist) {
+                    channels.add(channel);
+                    adapter.notifyDataSetChanged();
+                }
+            }
+
+            @Override
+            public void onChannelChange(Channel channel)
+            {
+                logger.d("Received onChannelChange callback for channel |" + channel.getFriendlyName()
+                        + "|");
+                adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onChannelDelete(final Channel channel)
+            {
+                logger.d("Received onChannelDelete callback for channel |" + channel.getFriendlyName()
+                        + "|");
+                channels.remove(channel);
+                adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onChannelInvite(final Channel channel)
+            {
+                ChannelActivity.this.showIncomingInvite(channel);
+            }
+
+            @Override
+            public void onChannelSynchronizationChange(Channel channel)
+            {
+                logger.e("Received onChannelSynchronizationChange callback for channel |"
+                        + channel.getFriendlyName()
+                        + "|");
+            }
+
+            @Override
+            public void onClientSynchronization(ChatClient.SynchronizationStatus status)
+            {
+                logger.e("Received onClientSynchronization callback " + status.toString());
+            }
+
+            @Override
+            public void onUserInfoChange(UserInfo userInfo, UserInfo.UpdateReason reason)
+            {
+                logger.e("Received onUserInfoChange callback");
+            }
+
+            @Override
+            public void onToastNotification(String channelId, String messageId)
+            {
+                logger.d("Received new push notification");
+                TwilioApplication.get().showToast("Received new push notification");
+            }
+
+            @Override
+            public void onToastSubscribed()
+            {
+                logger.d("Subscribed to push notifications");
+                TwilioApplication.get().showToast("Subscribed to push notifications");
+            }
+
+            @Override
+            public void onToastFailed(ErrorInfo errorInfo)
+            {
+                logger.d("Failed to subscribe to push notifications");
+                TwilioApplication.get().showError("Failed to subscribe to push notifications", errorInfo);
+            }
+
+            @Override
+            public void onError(ErrorInfo errorInfo)
+            {
+                TwilioApplication.get().showError("Received onError callback", errorInfo);
+            }
+
+            @Override
+            public void onConnectionStateChange(ChatClient.ConnectionState connectionState) {
+                TwilioApplication.get().showToast("Transport state changed to "+connectionState.toString());
+            }
+        });
         setupListView();
     }
 
@@ -434,103 +515,5 @@ public class ChannelActivity extends Activity implements ChatClientListener
         {
             return lhs.getFriendlyName().compareTo(rhs.getFriendlyName());
         }
-    }
-
-    //=============================================================
-    // ChatClientListener
-    //=============================================================
-
-    @Override
-    public void onChannelAdd(final Channel channel)
-    {
-        logger.d("Received onChannelAdd callback for channel |" + channel.getFriendlyName() + "|");
-
-        boolean isExist = false;
-        for (Channel c : channels) {
-            if (c.getSid().equals(channel.getSid())) {
-                isExist = true;
-                break;
-            }
-        }
-
-        if (!isExist) {
-            channels.add(channel);
-            adapter.notifyDataSetChanged();
-        }
-    }
-
-    @Override
-    public void onChannelChange(Channel channel)
-    {
-        logger.d("Received onChannelChange callback for channel |" + channel.getFriendlyName()
-                + "|");
-        adapter.notifyDataSetChanged();
-    }
-
-    @Override
-    public void onChannelDelete(final Channel channel)
-    {
-        logger.d("Received onChannelDelete callback for channel |" + channel.getFriendlyName()
-                + "|");
-        channels.remove(channel);
-        adapter.notifyDataSetChanged();
-    }
-
-    @Override
-    public void onChannelInvite(final Channel channel)
-    {
-        this.showIncomingInvite(channel);
-    }
-
-    @Override
-    public void onChannelSynchronizationChange(Channel channel)
-    {
-        logger.e("Received onChannelSynchronizationChange callback for channel |"
-                 + channel.getFriendlyName()
-                 + "|");
-    }
-
-    @Override
-    public void onClientSynchronization(ChatClient.SynchronizationStatus status)
-    {
-        logger.e("Received onClientSynchronization callback " + status.toString());
-    }
-
-    @Override
-    public void onUserInfoChange(UserInfo userInfo, UserInfo.UpdateReason reason)
-    {
-        logger.e("Received onUserInfoChange callback");
-    }
-
-    @Override
-    public void onToastNotification(String channelId, String messageId)
-    {
-        logger.d("Received new push notification");
-        TwilioApplication.get().showToast("Received new push notification");
-    }
-
-    @Override
-    public void onToastSubscribed()
-    {
-        logger.d("Subscribed to push notifications");
-        TwilioApplication.get().showToast("Subscribed to push notifications");
-    }
-
-    @Override
-    public void onToastFailed(ErrorInfo errorInfo)
-    {
-        logger.d("Failed to subscribe to push notifications");
-        TwilioApplication.get().showError("Failed to subscribe to push notifications", errorInfo);
-    }
-
-    @Override
-    public void onError(ErrorInfo errorInfo)
-    {
-        TwilioApplication.get().showError("Received onError callback", errorInfo);
-    }
-
-    @Override
-    public void onConnectionStateChange(ChatClient.ConnectionState connectionState) {
-        TwilioApplication.get().showToast("Transport state changed to "+connectionState.toString());
     }
 }

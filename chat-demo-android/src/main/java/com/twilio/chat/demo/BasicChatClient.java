@@ -1,29 +1,16 @@
 package com.twilio.chat.demo;
 
-import java.util.Arrays;
-import java.util.List;
-
-import com.twilio.accessmanager.AccessManager;
-
-import com.twilio.chat.Channel;
-import com.twilio.chat.StatusListener;
-import com.twilio.chat.CallbackListener;
-import com.twilio.chat.ChatClientListener;
-import com.twilio.chat.ChatClient;
-import com.twilio.chat.ErrorInfo;
-import com.twilio.chat.UserInfo;
-
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
-import android.widget.Toast;
+
+import com.twilio.accessmanager.AccessManager;
+import com.twilio.chat.CallbackListener;
+import com.twilio.chat.ChatClient;
+import com.twilio.chat.ErrorInfo;
 
 public class BasicChatClient extends CallbackListener<ChatClient>
-    implements AccessManager.Listener, AccessManager.TokenUpdateListener
 {
     private static final Logger logger = Logger.getLogger(BasicChatClient.class);
 
@@ -105,8 +92,39 @@ public class BasicChatClient extends CallbackListener<ChatClient>
     {
         if (accessManager != null) return;
 
-        accessManager = new AccessManager(accessToken, this);
-        accessManager.addTokenUpdateListener(this);
+        accessManager = new AccessManager(accessToken, new AccessManager.Listener() {
+            @Override
+            public void onTokenWillExpire(AccessManager accessManager)
+            {
+                TwilioApplication.get().showToast("AccessManager.onTokenWillExpire");
+            }
+
+            @Override
+            public void onTokenExpired(AccessManager accessManager)
+            {
+                TwilioApplication.get().showToast("Token expired. Getting new token.");
+                new GetAccessTokenAsyncTask().execute(username, urlString);
+            }
+
+            @Override
+            public void onError(AccessManager accessManager, String err)
+            {
+                TwilioApplication.get().showToast("AccessManager error: " + err);
+            }
+        });
+        accessManager.addTokenUpdateListener(new AccessManager.TokenUpdateListener() {
+            @Override
+            public void onTokenUpdated(String token)
+            {
+                TwilioApplication.get().showToast("AccessManager token updated: " + token);
+
+                if (chatClient == null) return;
+
+                chatClient.updateToken(token, new ToastStatusListener(
+                        "Client Update Token was successful",
+                        "Client Update Token failed"));
+            }
+        });
     }
 
     private void createClient()
@@ -168,40 +186,6 @@ public class BasicChatClient extends CallbackListener<ChatClient>
         });
     }
 
-    // AccessManager.Listener
-
-    @Override
-    public void onTokenWillExpire(AccessManager accessManager)
-    {
-        TwilioApplication.get().showToast("AccessManager.onTokenWillExpire");
-    }
-
-    @Override
-    public void onTokenExpired(AccessManager accessManager)
-    {
-        TwilioApplication.get().showToast("Token expired. Getting new token.");
-        new GetAccessTokenAsyncTask().execute(username, urlString);
-    }
-
-    @Override
-    public void onError(AccessManager accessManager, String err)
-    {
-        TwilioApplication.get().showToast("AccessManager error: " + err);
-    }
-
-    // AccessManager.TokenUpdateListener
-
-    @Override
-    public void onTokenUpdated(String token)
-    {
-        TwilioApplication.get().showToast("AccessManager token updated: " + token);
-
-        if (chatClient == null) return;
-
-        chatClient.updateToken(token, new ToastStatusListener(
-            "Client Update Token was successful",
-            "Client Update Token failed"));
-    }
 
     private Handler setupListenerHandler()
     {

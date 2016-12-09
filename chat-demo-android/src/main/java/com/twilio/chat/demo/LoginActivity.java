@@ -1,36 +1,19 @@
 package com.twilio.chat.demo;
 
-import java.io.IOException;
-import java.net.URLEncoder;
-
-import com.google.android.gms.gcm.GoogleCloudMessaging;
-import com.google.android.gms.iid.InstanceID;
-import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.common.ConnectionResult;
-
-import com.twilio.chat.StatusListener;
-import com.twilio.chat.ErrorInfo;
-
-import com.twilio.chat.ChatClient;
-import com.twilio.chat.demo.BasicChatClient.LoginListener;
-import com.twilio.chat.demo.R;
-import com.twilio.chat.demo.BuildConfig;
-
-import android.net.Uri;
-import android.provider.Settings.Secure;
-import android.support.v4.content.LocalBroadcastManager;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.IntentFilter;
 import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.os.AsyncTask;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.Settings.Secure;
+import android.support.v4.content.LocalBroadcastManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -38,9 +21,13 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.Toast;
-import android.preference.PreferenceManager;
 
-public class LoginActivity extends Activity implements LoginListener
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.twilio.chat.ChatClient;
+import com.twilio.chat.demo.BasicChatClient.LoginListener;
+
+public class LoginActivity extends Activity
 {
     private static final Logger logger = Logger.getLogger(LoginActivity.class);
 
@@ -107,7 +94,37 @@ public class LoginActivity extends Activity implements LoginListener
                                  .build()
                                  .toString();
                 logger.d("url string : " + url);
-                TwilioApplication.get().getBasicClient().login(idChosen, url, LoginActivity.this);
+                TwilioApplication.get().getBasicClient().login(idChosen, url, new LoginListener() {
+                    @Override
+                    public void onLoginStarted()
+                    {
+                        logger.d("Log in started");
+                        progressDialog = ProgressDialog.show(LoginActivity.this, "", "Logging in. Please wait...", true);
+                    }
+
+                    @Override
+                    public void onLoginFinished()
+                    {
+                        progressDialog.dismiss();
+                        Intent intent = new Intent(LoginActivity.this, ChannelActivity.class);
+                        startActivity(intent);
+                        finish();
+                    }
+
+                    @Override
+                    public void onLoginError(String errorMessage)
+                    {
+                        progressDialog.dismiss();
+                        logger.e("Error logging in : " + errorMessage);
+                        Toast.makeText(getBaseContext(), errorMessage, Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onLogoutFinished()
+                    {
+                        logger.d("Log out finished");
+                    }
+                });
             }
         });
 
@@ -155,36 +172,6 @@ public class LoginActivity extends Activity implements LoginListener
 
         AlertDialog aboutDialog = builder.create();
         aboutDialog.show();
-    }
-
-    @Override
-    public void onLoginStarted()
-    {
-        logger.d("Log in started");
-        progressDialog = ProgressDialog.show(this, "", "Logging in. Please wait...", true);
-    }
-
-    @Override
-    public void onLoginFinished()
-    {
-        progressDialog.dismiss();
-        Intent intent = new Intent(this, ChannelActivity.class);
-        startActivity(intent);
-        finish();
-    }
-
-    @Override
-    public void onLoginError(String errorMessage)
-    {
-        progressDialog.dismiss();
-        logger.e("Error logging in : " + errorMessage);
-        Toast.makeText(getBaseContext(), errorMessage, Toast.LENGTH_LONG).show();
-    }
-
-    @Override
-    public void onLogoutFinished()
-    {
-        logger.d("Log out finished");
     }
 
     @Override

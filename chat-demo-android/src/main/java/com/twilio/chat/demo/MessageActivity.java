@@ -1,28 +1,5 @@
 package com.twilio.chat.demo;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import com.twilio.chat.Channel;
-import com.twilio.chat.Channel.ChannelType;
-import com.twilio.chat.ChannelListener;
-import com.twilio.chat.Channels;
-import com.twilio.chat.StatusListener;
-import com.twilio.chat.CallbackListener;
-import com.twilio.chat.Member;
-import com.twilio.chat.Members;
-import com.twilio.chat.Message;
-import com.twilio.chat.Messages;
-import com.twilio.chat.ErrorInfo;
-import com.twilio.chat.Paginator;
-import com.twilio.chat.internal.Logger;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -32,26 +9,43 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.twilio.chat.CallbackListener;
+import com.twilio.chat.Channel;
+import com.twilio.chat.Channel.ChannelType;
+import com.twilio.chat.ChannelListener;
+import com.twilio.chat.Channels;
+import com.twilio.chat.ErrorInfo;
+import com.twilio.chat.Member;
+import com.twilio.chat.Members;
+import com.twilio.chat.Message;
+import com.twilio.chat.Messages;
+import com.twilio.chat.Paginator;
+import com.twilio.chat.StatusListener;
+import com.twilio.chat.internal.Logger;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
 import uk.co.ribot.easyadapter.EasyAdapter;
 
-public class MessageActivity extends Activity implements ChannelListener
+public class MessageActivity extends Activity
 {
     private static final Logger logger = Logger.getLogger(MessageActivity.class);
     private static final        String[] MESSAGE_OPTIONS = {
@@ -131,7 +125,99 @@ public class MessageActivity extends Activity implements ChannelListener
                 public void onSuccess(final Channel foundChannel)
                 {
                     channel = foundChannel;
-                    channel.addListener(MessageActivity.this);
+                    channel.addListener(new ChannelListener() {
+                        @Override
+                        public void onMessageAdd(Message message)
+                        {
+                            logger.d("Received onMessageAdd for message sid|" + message.getSid() + "|");
+                            //setupListView(this.channel);
+
+                            messages.add(message);
+                            Collections.sort(messages, new CustomMessageComparator());
+
+                            MessageItem[] items = new MessageItem[messages.size()];
+                            for (int i = 0; i < items.length; i++) {
+                                items[i] = new MessageItem(messages.get(i), channel.getMembers(), identity);
+                            }
+                            messageItemList = new ArrayList<>(Arrays.asList(items));
+
+                            adapter.setItems(messageItemList);
+                        }
+
+                        @Override
+                        public void onMessageChange(Message message)
+                        {
+                            if (message != null) {
+                                TwilioApplication.get().showToast(message.getSid() + " changed");
+                                logger.d("Received onMessageChange for message sid|" + message.getSid() + "|");
+                            } else {
+                                logger.d("Received onMessageChange");
+                            }
+                        }
+
+                        @Override
+                        public void onMessageDelete(Message message)
+                        {
+                            if (message != null) {
+                                TwilioApplication.get().showToast(message.getSid() + " deleted");
+                                logger.d("Received onMessageDelete for message sid|" + message.getSid() + "|");
+                            } else {
+                                logger.d("Received onMessageDelete.");
+                            }
+                        }
+
+                        @Override
+                        public void onMemberJoin(Member member)
+                        {
+                            if (member != null) {
+                                TwilioApplication.get().showToast(member.getUserInfo().getIdentity() + " joined");
+                            }
+                        }
+
+                        @Override
+                        public void onMemberChange(Member member)
+                        {
+                            if (member != null) {
+                                TwilioApplication.get().showToast(member.getUserInfo().getIdentity() + " changed");
+                            }
+                        }
+
+                        @Override
+                        public void onMemberDelete(Member member)
+                        {
+                            if (member != null) {
+                                TwilioApplication.get().showToast(member.getUserInfo().getIdentity() + " deleted");
+                            }
+                        }
+
+                        @Override
+                        public void onTypingStarted(Member member)
+                        {
+                            if (member != null) {
+                                TextView typingIndc = (TextView)findViewById(R.id.typingIndicator);
+                                String   text = member.getUserInfo().getIdentity() + " is typing .....";
+                                typingIndc.setText(text);
+                                typingIndc.setTextColor(Color.RED);
+                                logger.d(text);
+                            }
+                        }
+
+                        @Override
+                        public void onTypingEnded(Member member)
+                        {
+                            if (member != null) {
+                                TextView typingIndc = (TextView)findViewById(R.id.typingIndicator);
+                                typingIndc.setText(null);
+                                logger.d(member.getUserInfo().getIdentity() + " ended typing");
+                            }
+                        }
+
+                        @Override
+                        public void onSynchronizationChange(Channel channel)
+                        {
+                            logger.d("Received onSynchronizationChange callback " + channel.getFriendlyName());
+                        }
+                    });
                     MessageActivity.this.setTitle(
                         "Name:" + channel.getFriendlyName() + " Type:"
                         + ((channel.getType() == ChannelType.PUBLIC) ? "Public" : "Private"));
@@ -753,92 +839,6 @@ public class MessageActivity extends Activity implements ChannelListener
         inputText.requestFocus();
     }
 
-    @Override
-    public void onMessageAdd(Message message)
-    {
-        logger.d("Received onMessageAdd for message sid|" + message.getSid() + "|");
-        //setupListView(this.channel);
-
-        messages.add(message);
-        Collections.sort(messages, new CustomMessageComparator());
-
-        MessageItem[] items = new MessageItem[messages.size()];
-        for (int i = 0; i < items.length; i++) {
-            items[i] = new MessageItem(messages.get(i), channel.getMembers(), identity);
-        }
-        messageItemList = new ArrayList<>(Arrays.asList(items));
-
-        adapter.setItems(messageItemList);
-    }
-
-    @Override
-    public void onMessageChange(Message message)
-    {
-        if (message != null) {
-            TwilioApplication.get().showToast(message.getSid() + " changed");
-            logger.d("Received onMessageChange for message sid|" + message.getSid() + "|");
-        } else {
-            logger.d("Received onMessageChange");
-        }
-    }
-
-    @Override
-    public void onMessageDelete(Message message)
-    {
-        if (message != null) {
-            TwilioApplication.get().showToast(message.getSid() + " deleted");
-            logger.d("Received onMessageDelete for message sid|" + message.getSid() + "|");
-        } else {
-            logger.d("Received onMessageDelete.");
-        }
-    }
-
-    @Override
-    public void onMemberJoin(Member member)
-    {
-        if (member != null) {
-            TwilioApplication.get().showToast(member.getUserInfo().getIdentity() + " joined");
-        }
-    }
-
-    @Override
-    public void onMemberChange(Member member)
-    {
-        if (member != null) {
-            TwilioApplication.get().showToast(member.getUserInfo().getIdentity() + " changed");
-        }
-    }
-
-    @Override
-    public void onMemberDelete(Member member)
-    {
-        if (member != null) {
-            TwilioApplication.get().showToast(member.getUserInfo().getIdentity() + " deleted");
-        }
-    }
-
-    @Override
-    public void onTypingStarted(Member member)
-    {
-        if (member != null) {
-            TextView typingIndc = (TextView)findViewById(R.id.typingIndicator);
-            String   text = member.getUserInfo().getIdentity() + " is typing .....";
-            typingIndc.setText(text);
-            typingIndc.setTextColor(Color.RED);
-            logger.d(text);
-        }
-    }
-
-    @Override
-    public void onTypingEnded(Member member)
-    {
-        if (member != null) {
-            TextView typingIndc = (TextView)findViewById(R.id.typingIndicator);
-            typingIndc.setText(null);
-            logger.d(member.getUserInfo().getIdentity() + " ended typing");
-        }
-    }
-
     private void showChangeUniqueNameDialog()
     {
         AlertDialog.Builder builder = new AlertDialog.Builder(MessageActivity.this);
@@ -871,12 +871,6 @@ public class MessageActivity extends Activity implements ChannelListener
             });
         editTextDialog = builder.create();
         editTextDialog.show();
-    }
-
-    @Override
-    public void onSynchronizationChange(Channel channel)
-    {
-        logger.d("Received onSynchronizationChange callback " + channel.getFriendlyName());
     }
 
     public static class MessageItem
