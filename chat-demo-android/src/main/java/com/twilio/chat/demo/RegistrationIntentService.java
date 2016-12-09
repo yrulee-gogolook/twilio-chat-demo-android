@@ -40,6 +40,8 @@ public class RegistrationIntentService extends IntentService
             /**
              * Persist registration to Twilio servers.
              */
+
+            //TODO Handle token when client is not ready yet
             TwilioApplication.get().getBasicClient().setGCMToken(token);
 
             subscribeTopics(token);
