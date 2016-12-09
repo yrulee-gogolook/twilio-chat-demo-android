@@ -322,37 +322,46 @@ public class ChannelActivity extends Activity implements ChatClientListener
                         }
                     });
                 } else {
-                    channelsObject.channelBuilder()
-                            .withFriendlyName(DEFAULT_CHANNEL_FRIENDLY_NAME)
-                            .withUniqueName(DEFAULT_CHANNEL_NAME)
-                            .withType(ChannelType.PUBLIC)
-                            .build(new CallbackListener<Channel>() {
-                                @Override
-                                public void onSuccess(final Channel channel) {
-                                    if (channel != null) {
-                                        ChannelActivity.this.runOnUiThread(new Runnable() {
-                                            @Override
-                                            public void run() {
-                                                displayChannel(channel);
-                                            }
-                                        });
-                                    }
-                                }
-
-                                @Override
-                                public void onError(ErrorInfo errorInfo) {
-                                    logger.e("Error creating channel: " + errorInfo.getErrorText());
-                                }
-                            });
+                    createChannel();
                 }
             }
 
             @Override
             public void onError(ErrorInfo errorInfo) {
-                logger.e("Error retrieving channel: " + errorInfo.getErrorText());
+                logger.e("Error retrieving channel (" + errorInfo.getErrorCode() + ") : " + errorInfo.getErrorText());
+
+                //No default channel found, create a new one
+                if (errorInfo.getErrorCode() == 404) {
+                    createChannel();
+                }
             }
 
         });
+    }
+
+    private void createChannel() {
+        channelsObject.channelBuilder()
+                .withFriendlyName(DEFAULT_CHANNEL_FRIENDLY_NAME)
+                .withUniqueName(DEFAULT_CHANNEL_NAME)
+                .withType(ChannelType.PUBLIC)
+                .build(new CallbackListener<Channel>() {
+                    @Override
+                    public void onSuccess(final Channel channel) {
+                        if (channel != null) {
+                            ChannelActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    displayChannel(channel);
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onError(ErrorInfo errorInfo) {
+                        logger.e("Error creating channel: " + errorInfo.getErrorText());
+                    }
+                });
     }
 
     private void displayChannel(Channel channel) {
