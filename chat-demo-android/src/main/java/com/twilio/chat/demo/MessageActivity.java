@@ -2,11 +2,14 @@ package com.twilio.chat.demo;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.DataSetObserver;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.KeyEvent;
@@ -92,11 +95,122 @@ public class MessageActivity extends Activity
     private ArrayList<MessageItem> messageItemList;
     private String                 identity;
 
+    private ProgressDialog         progressDialog;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        createUI();
+
+        //TODO Check the ChatClient is exist or we need to login -> join channel -> fetch message
+        final BasicChatClient basicChatClient = TwilioApplication.get().getBasicClient();
+        if (basicChatClient.getChatClient() == null) {
+            String identity = "TestUser";//TODO Should use the Whoscall Card user name
+            String endpoint = Settings.Secure.getString(this.getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+
+            String url = Uri.parse(BuildConfig.ACCESS_TOKEN_SERVICE_URL)
+                    .buildUpon()
+                    .appendQueryParameter("identity", identity)
+                    //.appendQueryParameter("endpointId", endpointIdFull)
+                    .appendQueryParameter("device", endpoint)
+                    .build()
+                    .toString();
+
+            basicChatClient.login(identity, url, new BasicChatClient.LoginListener() {
+                @Override
+                public void onLoginStarted()
+                {
+                    logger.d("Log in started");
+                    progressDialog = ProgressDialog.show(MessageActivity.this, "", "Logging in. Please wait...", true);
+                }
+
+                @Override
+                public void onLoginFinished()
+                {
+                    progressDialog.dismiss();
+
+                    final Channels channels = basicChatClient.getChatClient().getChannels();
+                    channels.getChannel(TwilioApplication.DEFAULT_CHANNEL_NAME, new CallbackListener<Channel>() {
+                        @Override
+                        public void onSuccess(final Channel channel) {
+                            if (channel != null) {
+                                MessageActivity.this.runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        joinChannel(channel);
+                                    }
+                                });
+                            } else {
+                                createChannel(channels);
+                            }
+                        }
+
+                        @Override
+                        public void onError(ErrorInfo errorInfo) {
+                            logger.e("Error retrieving channel (" + errorInfo.getErrorCode() + ") : " + errorInfo.getErrorText());
+
+                            //No default channel found, create a new one
+                            if (errorInfo.getErrorCode() == 404) {
+                                createChannel(channels);
+                            }
+                        }
+
+                    });
+                }
+
+                @Override
+                public void onLoginError(String errorMessage)
+                {
+                    progressDialog.dismiss();
+                    logger.e("Error logging in : " + errorMessage);
+                    Toast.makeText(getBaseContext(), errorMessage, Toast.LENGTH_LONG).show();
+                }
+
+                @Override
+                public void onLogoutFinished()
+                {
+                    logger.d("Log out finished");
+                }
+            });
+        } else {
+            createUI();
+        }
+    }
+
+    private void createChannel(Channels channels) {
+        channels.channelBuilder()
+                .withFriendlyName(TwilioApplication.DEFAULT_CHANNEL_FRIENDLY_NAME)
+                .withUniqueName(TwilioApplication.DEFAULT_CHANNEL_NAME)
+                .withType(ChannelType.PUBLIC)
+                .build(new CallbackListener<Channel>() {
+                    @Override
+                    public void onSuccess(final Channel channel) {
+                        if (channel != null) {
+                            MessageActivity.this.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    joinChannel(channel);
+                                }
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onError(ErrorInfo errorInfo) {
+                        logger.e("Error creating channel: " + errorInfo.getErrorText());
+                    }
+                });
+    }
+
+    private void joinChannel(final Channel channel) {
+        channel.join(new StatusListener() {
+            @Override
+            public void onSuccess() {
+                createUI();
+                setupListView(channel);
+            }
+        });
     }
 
     @Override

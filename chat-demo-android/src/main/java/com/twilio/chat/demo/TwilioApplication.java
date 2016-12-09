@@ -12,6 +12,10 @@ import com.twilio.chat.ErrorInfo;
 
 public class TwilioApplication extends Application
 {
+
+    final static String DEFAULT_CHANNEL_FRIENDLY_NAME = "General Chat Channel";
+    final static String DEFAULT_CHANNEL_NAME = "general";
+
     private static TwilioApplication instance;
     private BasicChatClient   basicClient;
 

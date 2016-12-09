@@ -38,9 +38,6 @@ public class ChannelActivity extends Activity
 {
     private static final Logger logger = Logger.getLogger(ChannelActivity.class);
 
-    final static String DEFAULT_CHANNEL_FRIENDLY_NAME = "General Chat Channel";
-    final static String DEFAULT_CHANNEL_NAME = "general";
-
     private static final String[] CHANNEL_OPTIONS = { "Join" };
 
     private static final int JOIN = 0;
@@ -392,7 +389,7 @@ public class ChannelActivity extends Activity
         channelsObject = basicClient.getChatClient().getChannels();
 
         //Fetch only one channel for testing
-        channelsObject.getChannel(DEFAULT_CHANNEL_NAME, new CallbackListener<Channel>() {
+        channelsObject.getChannel(TwilioApplication.DEFAULT_CHANNEL_NAME, new CallbackListener<Channel>() {
             @Override
             public void onSuccess(final Channel channel) {
                 if (channel != null) {
@@ -422,8 +419,8 @@ public class ChannelActivity extends Activity
 
     private void createChannel() {
         channelsObject.channelBuilder()
-                .withFriendlyName(DEFAULT_CHANNEL_FRIENDLY_NAME)
-                .withUniqueName(DEFAULT_CHANNEL_NAME)
+                .withFriendlyName(TwilioApplication.DEFAULT_CHANNEL_FRIENDLY_NAME)
+                .withUniqueName(TwilioApplication.DEFAULT_CHANNEL_NAME)
                 .withType(ChannelType.PUBLIC)
                 .build(new CallbackListener<Channel>() {
                     @Override

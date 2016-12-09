@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 
 import com.twilio.accessmanager.AccessManager;
 import com.twilio.chat.CallbackListener;
@@ -82,7 +83,14 @@ public class BasicChatClient
 
     private void setupGcmToken()
     {
-        chatClient.registerGCMToken(getGCMToken(),
+        String gcmToken = getGCMToken();
+
+        if (TextUtils.isEmpty(gcmToken)) {
+            logger.e("GCM token is empty, return.");
+            return;
+        }
+
+        chatClient.registerGCMToken(gcmToken,
             new ToastStatusListener(
                 "GCM registration successful",
                 "GCM registration not successful"));
