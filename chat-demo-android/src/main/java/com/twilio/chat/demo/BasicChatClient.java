@@ -10,7 +10,7 @@ import com.twilio.chat.CallbackListener;
 import com.twilio.chat.ChatClient;
 import com.twilio.chat.ErrorInfo;
 
-public class BasicChatClient extends CallbackListener<ChatClient>
+public class BasicChatClient
 {
     private static final Logger logger = Logger.getLogger(BasicChatClient.class);
 
@@ -62,7 +62,7 @@ public class BasicChatClient extends CallbackListener<ChatClient>
 
     public void login(final String username, final String url, final LoginListener listener) {
         if (username == this.username && urlString == url && loginListener == listener && chatClient != null && accessManager != null) {
-            onSuccess(chatClient);
+            handleSuccess(chatClient);
             return;
         }
 
@@ -138,21 +138,36 @@ public class BasicChatClient extends CallbackListener<ChatClient>
                 .createProperties();
 
         ChatClient.create(context.getApplicationContext(),
-                                 accessToken,
-                                 props,
-                                 this);
+                accessToken,
+                props,
+                new CallbackListener<ChatClient>() {
+                    // Client created, remember the reference and set up UI
+                    @Override
+                    public void onSuccess(ChatClient client)
+                    {
+                        handleSuccess(client);
+                    }
+
+                    // Client not created, fail
+                    @Override
+                    public void onError(final ErrorInfo errorInfo)
+                    {
+                        TwilioApplication.get().logErrorInfo("Received onError event", errorInfo);
+
+                        loginListenerHandler.post(new Runnable() {
+                            @Override
+                            public void run()
+                            {
+                                if (loginListener != null) {
+                                    loginListener.onLoginError(errorInfo.getErrorCode() + " " + errorInfo.getErrorText());
+                                }
+                            }
+                        });
+                    }
+                });
     }
 
-    public void shutdown()
-    {
-        chatClient.shutdown();
-        chatClient = null; // Client no longer usable after shutdown()
-    }
-
-    // Client created, remember the reference and set up UI
-    @Override
-    public void onSuccess(ChatClient client)
-    {
+    private void handleSuccess(ChatClient client) {
         logger.d("Received completely initialized ChatClient");
         chatClient = client;
 
@@ -162,30 +177,18 @@ public class BasicChatClient extends CallbackListener<ChatClient>
             @Override
             public void run()
             {
-            if (loginListener != null) {
-                loginListener.onLoginFinished();
-            }
+                if (loginListener != null) {
+                    loginListener.onLoginFinished();
+                }
             }
         });
     }
 
-    // Client not created, fail
-    @Override
-    public void onError(final ErrorInfo errorInfo)
+    public void shutdown()
     {
-        TwilioApplication.get().logErrorInfo("Received onError event", errorInfo);
-
-        loginListenerHandler.post(new Runnable() {
-            @Override
-            public void run()
-            {
-            if (loginListener != null) {
-                loginListener.onLoginError(errorInfo.getErrorCode() + " " + errorInfo.getErrorText());
-            }
-            }
-        });
+        chatClient.shutdown();
+        chatClient = null; // Client no longer usable after shutdown()
     }
-
 
     private Handler setupListenerHandler()
     {
