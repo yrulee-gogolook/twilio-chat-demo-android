@@ -199,7 +199,7 @@ public class BasicChatClient extends CallbackListener<ChatClient>
         if (chatClient == null) return;
 
         chatClient.updateToken(token, new ToastStatusListener(
-            "Client Update Token was successfull",
+            "Client Update Token was successful",
             "Client Update Token failed"));
     }
 
